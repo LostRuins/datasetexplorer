@@ -1,4 +1,4 @@
-# DatasetExplorer
+# Concedo's Dataset Explorer
 Easily view and modify JSON and JSONL datasets for training large language models
 
 ![image](https://github.com/user-attachments/assets/23c58d45-5a00-4159-9d37-c5a21996f2b0)
@@ -16,3 +16,8 @@ Easily view and modify JSON and JSONL datasets for training large language model
 - Pick individual samples or bulk-combine groups of them to curate your dataset, and **save the results as a new JSON dataset**
 - Fast and efficient, comfortably handles small to medium datasets of a few hundred MB without issue 
 - Fully open source, capable of running completely offline (just save the HTML file)
+
+### Tips
+- JSON > Parquet
+- Alpaca > ChatML
+- Kobo > !Kobo
