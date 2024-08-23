@@ -11,6 +11,7 @@ Easily view and modify JSON and JSONL datasets for training large language model
 - Supports **searching and filtering** with regex or simple substrings
 - Includes an **N-gram viewer** to inspect selected examples for word frequency and repetition (word cloud)
 - Allows **splitting datasets** by selecting desired subsets with different queries
-- Select individual samples or combine groups of them to curate your dataset, and **save the results as a new JSON dataset**
+- Includes a simple editor to modify invidual samples.
+- Pick individual samples or bulk-combine groups of them to curate your dataset, and **save the results as a new JSON dataset**
 - Fast and efficient, comfortably handles small to medium datasets of a few hundred MB without issue 
 - Fully open source, capable of running completely offline (just save the HTML file)
