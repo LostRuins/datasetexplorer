@@ -17,7 +17,7 @@ Easily view and modify JSON and JSONL datasets for training large language model
 - Fast and efficient, comfortably handles small to medium datasets of a few hundred MB without issue 
 - Fully open source, capable of running completely offline (just save the HTML file)
 
-Try now at [https://lostruins.github.io/datasetexplorer](https://lostruins.github.io/datasetexplorer)
+**Free and open source. Try now at [https://lostruins.github.io/datasetexplorer](https://lostruins.github.io/datasetexplorer)**
 
 ### Tips
 - JSON > Parquet
