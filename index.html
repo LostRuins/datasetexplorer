@@ -360,8 +360,6 @@ function displayTitles() {
     tocDiv.innerText = ''; // Clear previous titles
     let ascindex = 0;
     currdbidxs = [];
-    selecteddb = {};
-    countsel();
 
     db.forEach((item, index) => {
         const titleDiv = document.createElement('div');
@@ -498,6 +496,8 @@ function loadfile()
             const set = new Set(db.map(item => JSON.stringify(item)));
             db = Array.from(set).map(item => JSON.parse(item));
         }
+        selecteddb = {};
+        countsel();
         displayTitles();
         contentsDiv.innerText = "Dataset File Loaded\nSelect an item to browse contents.";
     }
