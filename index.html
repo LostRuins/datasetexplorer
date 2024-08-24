@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+This is a JSON Dataset Explorer (Viewer and Editor) made by Concedo/LostRuins
+Please go to https://github.com/LostRuins/DatasetExplorer for updates
+This software is under the AGPL v3.0 License unless otherwise exempted. Please do not remove this line.
+-Concedo
+-->
+
+<head>
+<style>
+html {
+    font-family: sans-serif;
+    -ms-text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+    font-size: 10px;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box
+}
+
+:after,
+:before {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box
+}
+
+.cb
+{
+    width:18px;
+    height:18px;
+}
+
+body {
+    margin: 0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.42857143;
+    color: #333;
+    background-color: #fff;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+a {
+    color: #337ab7;
+    text-decoration: none;
+}
+
+a:focus,
+a:hover {
+    color: #23527c;
+    text-decoration: underline;
+}
+
+a:focus {
+    outline: 5px auto -webkit-focus-ring-color;
+    outline-offset: -2px;
+}
+
+img {
+    vertical-align: middle;
+}
+
+.nest1
+{
+    color:rgb(89, 58, 202);
+}
+
+.nest2
+{
+    color:rgb(197, 69, 69);
+}
+
+.unselectable {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+}
+</style>
+<title>Concedo JSON Dataset Explorer</title>
+
+<script>
+var db = [];
+var lastleftitem = null;
+var lastselectedidx = 0;
+var currdbidxs = [];
+var selecteddb = {};
+
+function formatHtml(unsafe)
+{
+    if(!unsafe){return "";}
+    return unsafe.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;")
+        .replace(/\n/g, '<br>')
+        .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+
+}
+function isArr(obj) {
+    // checks for null and undefined
+    if (obj == null) {
+        return false;
+    }
+    return (obj.constructor === Array)
+}
+
+function countsel()
+{
+    let count = 0;
+    for (k in selecteddb) if (selecteddb[k]) ++count;
+    document.getElementById("selcounter").innerText = `${count} Selected`;
+}
+function selitm(idx)
+{
+    let box = document.getElementById(`itm${idx}`);
+    if(box)
+    {
+        selecteddb[idx] = box.checked;
+    }
+}
+function selall()
+{
+    let selamt = currdbidxs.length;
+    if(document.getElementById("selectamt").value!="")
+    {
+        selamt = Math.min(selamt,document.getElementById("selectamt").value);
+    }
+
+    for(let i=0;i<selamt;++i)
+    {
+        let box = document.getElementById(`itm${currdbidxs[i]}`);
+        if(box)
+        {
+            box.checked = true;
+            selitm(currdbidxs[i]);
+        }
+    }
+    countsel();
+}
+function deselall()
+{
+    for(let i=0;i<currdbidxs.length;++i)
+    {
+        let box = document.getElementById(`itm${currdbidxs[i]}`);
+        if(box)
+        {
+            box.checked = false;
+            selitm(currdbidxs[i]);
+        }
+    }
+    countsel();
+}
+
+function invertsel()
+{
+    for(let i=0;i<currdbidxs.length;++i)
+    {
+        let box = document.getElementById(`itm${currdbidxs[i]}`);
+        if(box)
+        {
+            box.checked = !box.checked;
+            selitm(currdbidxs[i]);
+        }
+    }
+    countsel();
+}
+
+
+function ngramParser(text, n) {
+    const words = text.split(/\s+/).filter(word => word.length > 0);
+    const ngrams = {};
+    for (let i = 0; i <= words.length - n; i++) {
+        const ngram = words.slice(i, i + n).join(' ');
+        if (ngrams[ngram]) {
+            ngrams[ngram]++;
+        } else {
+            ngrams[ngram] = 1;
+        }
+    }
+    const sortedNgrams = Object.entries(ngrams).sort((a, b) => b[1] - a[1]);
+    return sortedNgrams.map(entry => ({ ng: entry[0], cnt: entry[1] }));
+}
+
+function displayngram()
+{
+    const contentsDiv = document.getElementById('contents');
+    let fulltxt = "";
+    let parts = [];
+    for (k in selecteddb) {
+        if (selecteddb[k]) {
+            parts.push(renderPage(db[k],false).text);
+        }
+    }
+    fulltxt = parts.join('\n\n');
+
+    if(fulltxt=="")
+    {
+        contentsDiv.innerText = "You must select at least 1 item to calculate N-Grams!";
+        contentsDiv.scrollTop = 0;
+        return;
+    }
+
+    let pageText = "";
+    for(let i=1;i<=5;++i)
+    {
+        let res = ngramParser(fulltxt,i);
+        let lim = Math.min(res.length,100);
+        pageText += `[ ${i} Word Sequences ]\n`;
+        for(let j=0;j<lim;++j)
+        {
+            pageText += `${res[j].cnt} - ${res[j].ng}\n`;
+        }
+        pageText += `\n\n`;
+    }
+    contentsDiv.innerText = pageText;
+    contentsDiv.scrollTop = 0;
+}
+
+function endEditElem()
+{
+    const contentsDiv = document.getElementById('contents');
+    if(lastselectedidx >= db.length)
+    {
+        return;
+    }
+    let ebox = document.getElementById('editbox');
+    if(ebox && ebox.value)
+    {
+        try {
+            var newitem = JSON.parse(ebox.value);
+            db[lastselectedidx] = newitem;
+            contentsDiv.innerHTML = renderPage(db[lastselectedidx],true).text;
+            contentsDiv.scrollTop = 0;
+        } catch (e) {
+            console.log("Error decoding text: " + e);
+        }
+    }
+}
+
+function editElem()
+{
+    if(lastselectedidx >= db.length)
+    {
+        return;
+    }
+    let itm = db[lastselectedidx];
+    let itmstr = JSON.stringify(itm,null,2);
+    const contentsDiv = document.getElementById('contents');
+    contentsDiv.innerHTML = `<button class="unselectable" onclick="return endEditElem()" style="float:right;">Save Edits</button><textarea style="line-height:1.1;width:100%;height:calc(100% - 54px);resize: none;" id="editbox" placeholder="" rows="15"></textarea>`;
+    document.getElementById('editbox').value = itmstr;
+    contentsDiv.scrollTop = 0;
+}
+
+function renderPage(item, useHtml) {
+    let tot = "";
+    let nodecount = 0;
+    if(useHtml)
+    {
+        tot += `<button class="unselectable" onclick="return editElem()" style="float:right;">Edit Item</button>`;
+    }
+    for (let key in item) {
+        if (item.hasOwnProperty(key)) {
+            let val = item[key];
+            let valmod = false;
+            if (isArr(val)) {
+                let v2 = "";
+                for (let key2 in val) {
+                    let arritem = val[key2];
+                    if (arritem.constructor == Object) { //dict test
+                        for (let key3 in arritem) {
+                            if (arritem.hasOwnProperty(key3)) {
+                                let val3 = arritem[key3];
+                                nodecount += 1;
+                                if (useHtml) {
+                                    v2 += `<span class='nest2'>[[${formatHtml(key3)}]]</span><br>${formatHtml(val3)}<br><br>`;
+                                } else {
+                                    v2 += `\n\n${val3}`;
+                                }
+                            }
+                        }
+                    }
+                }
+                valmod = true;
+                val = v2;
+            }
+            else if (val.constructor == Object) {
+                let v2 = "";
+                for (let key3 in val) {
+                    if (val.hasOwnProperty(key3)) {
+                        let val3 = val[key3];
+                        nodecount += 1;
+                        if (useHtml) {
+                            v2 += `<span class='nest2'>[[${formatHtml(key3)}]]</span><br>${formatHtml(val3)}<br><br>`;
+                        } else {
+                            v2 += `\n\n${val3}`;
+                        }
+                    }
+                }
+                valmod = true;
+                val = v2;
+            }
+            nodecount += 1;
+            if (useHtml) {
+                tot += `<span class='nest1'>[${formatHtml(key)}]</span><br>${valmod ? val : formatHtml(val)}<br><br>`;
+            } else {
+                tot += `\n\n${val}`;
+            }
+
+        }
+    }
+    return {"text":tot,"nodes":nodecount};
+}
+
+function clearInputs()
+{
+    document.getElementById('minlen').value = "";
+    document.getElementById('maxlen').value = "";
+    document.getElementById('minnodes').value = "";
+    document.getElementById('maxnodes').value = "";
+    document.getElementById('search').value = "";
+    document.getElementById('casesensitive').checked = false;
+    document.getElementById('useregex').checked = false;
+    document.getElementById('selectamt').value = "";
+}
+
+function displayTitles() {
+    const tocDiv = document.getElementById('toc');
+    const contentsDiv = document.getElementById('contents');
+    const minlen = document.getElementById('minlen').value;
+    const maxlen = document.getElementById('maxlen').value;
+    const minnodes = document.getElementById('minnodes').value;
+    const maxnodes = document.getElementById('maxnodes').value;
+    let search = document.getElementById('search').value;
+    let searchuncased = "";
+
+    contentsDiv.innerText = "";
+
+    if (search != "") {
+        searchuncased = search.toLowerCase();
+    }
+    tocDiv.innerText = ''; // Clear previous titles
+    let ascindex = 0;
+    currdbidxs = [];
+    selecteddb = {};
+    countsel();
+
+    db.forEach((item, index) => {
+        const titleDiv = document.createElement('div');
+
+        let rendered = renderPage(item,false);
+        let len = rendered.text.length;
+
+        if (minlen != "") {
+            if (len < minlen) {
+                return;
+            }
+        }
+        if (maxlen != "") {
+            if (len > maxlen) {
+                return;
+            }
+        }
+        if (minnodes != "") {
+            if (rendered.nodes < minnodes) {
+                return;
+            }
+        }
+        if (maxnodes != "") {
+            if (rendered.nodes > maxnodes) {
+                return;
+            }
+        }
+        if (search != "") {
+
+            if (document.getElementById('useregex').checked) {
+                var exp = new RegExp(search, `g${document.getElementById('casesensitive').checked?"":"i"}`);
+                if(!rendered.text.match(exp))
+                {
+                    return;
+                }
+            } else {
+                if (document.getElementById('casesensitive').checked) {
+                    if (!rendered.text.includes(search)) {
+                        return;
+                    }
+                } else {
+                    if (!rendered.text.toLowerCase().includes(searchuncased)) {
+                        return;
+                    }
+                }
+            }
+
+        }
+        titleDiv.innerHTML = `<input class="cb" type="checkbox" id="itm${index}" onclick="selitm(${index});countsel();" ${selecteddb[index]?"checked":""}> ${index} - ${len}`;
+        titleDiv.style.cursor = 'pointer';
+        titleDiv.addEventListener('click', function () {
+            lastselectedidx = index;
+            contentsDiv.innerHTML = renderPage(db[index],true).text;
+            contentsDiv.scrollTop = 0;
+            if (lastleftitem) {
+                lastleftitem.style.backgroundColor = null;
+            }
+            lastleftitem = titleDiv;
+            titleDiv.style.backgroundColor = '#d3d3d3';
+        });
+        tocDiv.appendChild(titleDiv);
+        currdbidxs.push(index);
+        ascindex += 1;
+    });
+
+    document.getElementById('rescounter').innerText = `${ascindex} Results`;
+
+}
+
+var tempfileurl = null;
+var tempfileobj = [];
+function exportsel()
+{
+    const contentsDiv = document.getElementById('contents');
+    tempfileobj = [];
+    for(let i=0;i<currdbidxs.length;++i)
+    {
+        let box = document.getElementById(`itm${currdbidxs[i]}`);
+        if(box && box.checked)
+        {
+            tempfileobj.push(db[i]);
+        }
+    }
+
+    if(tempfileobj.length==0)
+    {
+        contentsDiv.innerText = "Error: Please select at least 1 sample to export!";
+        return;
+    }
+
+    var a = document.getElementById("tempfile");
+    var file = null;
+    try {
+        file = new Blob([JSON.stringify(tempfileobj,null,2)], { type: 'application/json' });
+        if (tempfileurl) {
+            window.URL.revokeObjectURL(tempfileurl);
+        }
+        tempfileurl = window.URL.createObjectURL(file);
+        a.href = tempfileurl;
+        a.target = '_blank';
+        a.download = "selected_dataset.json";
+        setTimeout(function(){a.click()},20);
+    } catch (e) {
+        contentsDiv.innerText = "File could not be saved. It might be too large.\nTry splitting into multiple files instead.\n\n"+e;
+        console.log("Error saving: " + e);
+    }
+}
+
+let lastfile = null;
+function loadfile()
+{
+    if(!lastfile)
+    {
+        return;
+    }
+    const overwrite = !(document.getElementById('appendfile').checked);
+    const contentsDiv = document.getElementById('contents');
+    const dedup = (document.getElementById('dedup').checked);
+    let newdb = [];
+
+    function postLoad()
+    {
+        if(overwrite)
+        {
+            db = newdb;
+        }else{
+            for(let s in newdb)
+            {
+                db.push(newdb[s]);
+            }
+        }
+        if(dedup)
+        {
+            const set = new Set(db.map(item => JSON.stringify(item)));
+            db = Array.from(set).map(item => JSON.parse(item));
+        }
+        displayTitles();
+        contentsDiv.innerText = "Dataset File Loaded\nSelect an item to browse contents.";
+    }
+
+    if (lastfile && lastfile.type === "application/json") {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            newdb = JSON.parse(e.target.result);
+            postLoad();
+        };
+        reader.readAsText(lastfile);
+    }
+    else if (lastfile && lastfile.name.toLowerCase().endsWith(".jsonl")) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const content = e.target.result;
+            const lines = content.split('\n');
+            newdb = lines.filter(line => line.trim()).map(line => JSON.parse(line));
+            postLoad();
+        };
+        reader.readAsText(lastfile);
+    }
+}
+function clearfile()
+{
+    lastfile = null;
+    document.getElementById('pickfile').value = "";
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const fileInput = document.getElementById('pickfile');
+
+    fileInput.addEventListener('change', function (event) {
+        lastfile = event.target.files[0];
+        loadfile();
+    });
+});
+
+</script>
+</head>
+
+<body>
+<div style="display:flex;">
+<div style="padding:6px">
+    <div style="padding:2px">
+        <input id="pickfile" name="file" type="file" accept=".json,.jsonl">
+        <a id="tempfile" href="#" style="display:none;"></a>
+        <button onclick="clearfile()">x</button>
+        <input type="checkbox" id="dedup">
+        <label for="dedup"> Deduplicate</label>
+        <input type="checkbox" id="appendfile">
+        <label for="appendfile"> Merge into Existing</label>
+
+    </div>
+    <div style="padding:2px">
+        <input type="text" style="width:80px" placeholder="(Min Len)" value="" id="minlen">
+        <input type="text" style="width:80px" placeholder="(Max Len)" value="" id="maxlen">
+        <input type="text" style="width:90px" placeholder="(Min Turns)" value="" id="minnodes">
+        <input type="text" style="width:90px" placeholder="(Max Turns)" value="" id="maxnodes">
+        <button onclick="clearInputs()">Clear Filters</button>
+    </div>
+    <div style="padding:2px">
+        <input type="text" style="width:160px" placeholder="(Search)" value="" id="search">
+        <input type="checkbox" id="useregex">
+        <label for="useregex"> Uses Regex</label>
+        <input type="checkbox" id="casesensitive">
+        <label for="casesensitive"> Case Sensitive</label>
+        <button id="filter" onclick="displayTitles()">Filter</button>
+        <span id="rescounter">0 Results</span>
+    </div>
+    <div style="padding:2px">
+        <input type="text" style="width:80px" placeholder="(Select All)" value="" id="selectamt">
+        <button id="selectall" onclick="selall()">Select Items</button>
+        <button id="deselectall" onclick="deselall()">Deselect All Items</button>
+        <button id="invertsel" onclick="invertsel()">Invert Selection</button>
+        <span id="selcounter">0 Selected</span>
+    </div>
+</div>
+<div style="margin-left: auto; padding-right:8px;padding-left:8px;">
+    <h2 style="margin-top: 4px; margin-bottom: 4px;">Concedo JSON Dataset Explorer</h2>
+    <h3 style="margin-top: 4px; margin-bottom: 4px; text-align: right;"><button id="ngram" onclick="displayngram()">Calc. N-Gram</button> <button id="exportsel" onclick="exportsel()">JSON Export Selected</button></h3>
+
+</div>
+
+</div>
+<div style="display:flex;height:calc(100vh - 138px); font-size:20px; margin-top:4px">
+    <div id="toc" style="height:100%; overflow:auto; width:220px; padding:10px; border-right:1px solid #ccc;">No Items</div>
+    <div id="contents" style="height:100%; overflow:auto; width:calc(100% - 220px); padding:10px;">No File Opened</div>
+</div>
+</body>
+
+</html>
