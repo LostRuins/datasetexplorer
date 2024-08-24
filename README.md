@@ -15,7 +15,7 @@ Easily view and modify JSON and JSONL datasets for training large language model
 - Allows easy **dataset deduplication**
 - Includes a simple inline editor to modify invidual samples or correct typos.
 - Pick individual samples or bulk-combine groups of them to curate your dataset, and **save the results as a new JSON dataset**
-- Fast and efficient, comfortably handles small to medium datasets of a few hundred MB without issue 
+- Fast and efficient, comfortably handles small to medium sized datasets of up to 400 MB. For larger datasets, it's recommended to split them first. 
 - Fully open source, capable of running completely offline (just save the HTML file)
 
 **Free and open source. Try now at [https://lostruins.github.io/datasetexplorer](https://lostruins.github.io/datasetexplorer)**
