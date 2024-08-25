@@ -437,10 +437,11 @@ function exportsel()
     tempfileobj = [];
     for(let i=0;i<currdbidxs.length;++i)
     {
-        let box = document.getElementById(`itm${currdbidxs[i]}`);
+        let ci = currdbidxs[i];
+        let box = document.getElementById(`itm${ci}`);
         if(box && box.checked)
         {
-            tempfileobj.push(db[i]);
+            tempfileobj.push(db[ci]);
         }
     }
 
