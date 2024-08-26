@@ -273,6 +273,7 @@ function editElem()
 function renderPage(item, useHtml) {
     let tot = "";
     let nodecount = 0;
+    let wordcount = 0;
     if(useHtml)
     {
         tot += `<button class="unselectable" onclick="return editElem()" style="float:right;">Edit Item</button>`;
@@ -327,7 +328,11 @@ function renderPage(item, useHtml) {
 
         }
     }
-    return {"text":tot,"nodes":nodecount};
+    if(document.getElementById('showdetail').value=="words")
+    {
+    wordcount = countWords(tot);
+    }
+    return {"text":tot,"nodes":nodecount,"words":wordcount};
 }
 
 function clearInputs()
@@ -408,7 +413,23 @@ function displayTitles() {
             }
 
         }
-        titleDiv.innerHTML = `<input class="cb" type="checkbox" id="itm${index}" onclick="selitm(${index});countsel();" ${selecteddb[index]?"checked":""}> ${index} - ${len}`;
+        let shownvalue = "";
+        switch(document.getElementById('showdetail').value)
+        {
+            case "chars":
+            shownvalue = len;
+            break;
+            case "words":
+            shownvalue = rendered.words;
+            break;
+            case "turns":
+            shownvalue = rendered.nodes;
+            break;
+            case "matches":
+            shownvalue = len;
+            break;
+        }
+        titleDiv.innerHTML = `<input class="cb" type="checkbox" id="itm${index}" onclick="selitm(${index});countsel();" ${selecteddb[index]?"checked":""}> ${index} - ${shownvalue}`;
         titleDiv.style.cursor = 'pointer';
         titleDiv.addEventListener('click', function () {
             lastselectedidx = index;
@@ -431,6 +452,26 @@ function displayTitles() {
 
 var tempfileurl = null;
 var tempfileobj = [];
+function prunesel()
+{
+    const contentsDiv = document.getElementById('contents');
+    tempfileobj = [];
+    for(let i=0;i<currdbidxs.length;++i)
+    {
+        let ci = currdbidxs[i];
+        let box = document.getElementById(`itm${ci}`);
+        if(box && box.checked)
+        {
+            tempfileobj.push(db[ci]);
+        }
+    }
+
+    db = tempfileobj;
+    selecteddb = {};
+    countsel();
+    displayTitles();
+}
+
 function exportsel()
 {
     const contentsDiv = document.getElementById('contents');
@@ -476,23 +517,38 @@ function loadfile()
     {
         return;
     }
-    const overwrite = !(document.getElementById('appendfile').checked);
+    const replace_existing = (document.getElementById('appendfile').value=="0");
+    const merge_existing = (document.getElementById('appendfile').value=="1");
+    const subtract_existing = (document.getElementById('appendfile').value=="2");
     const contentsDiv = document.getElementById('contents');
     const dedup = (document.getElementById('dedup').checked);
     let newdb = [];
 
     function postLoad()
     {
-        if(overwrite)
+        if(replace_existing)
         {
             db = newdb;
-        }else{
+        }else if(merge_existing){
             for(let s in newdb)
             {
                 db.push(newdb[s]);
             }
         }
-        if(dedup)
+        else
+        {
+            const set = new Set(db.map(item => JSON.stringify(item)));
+            for(let s in newdb)
+            {
+                let newitm = JSON.stringify(newdb[s]);
+                if(set.has(newitm))
+                {
+                    set.delete(newitm);
+                }
+            }
+            db = Array.from(set).map(item => JSON.parse(item));
+        }
+        if(dedup && !subtract_existing)
         {
             const set = new Set(db.map(item => JSON.stringify(item)));
             db = Array.from(set).map(item => JSON.parse(item));
@@ -527,6 +583,21 @@ function clearfile()
     lastfile = null;
     document.getElementById('pickfile').value = "";
 }
+function countWords(str) {
+    if (str == "") { return 0; }
+    const wordPattern = /[a-zA-Z0-9_]+/g;
+    const words = str.match(wordPattern);
+    if (!words) {
+        return 0;
+    }
+    return words.length;
+}
+function countOccurances(str,search)
+{
+    var exp = new RegExp(search, `g${document.getElementById('casesensitive').checked?"":"i"}`);
+    var count = (temp.match(exp) || []).length;
+    return count;
+}
 
 document.addEventListener("DOMContentLoaded", function () {
     const fileInput = document.getElementById('pickfile');
@@ -547,10 +618,13 @@ document.addEventListener("DOMContentLoaded", function () {
         <input id="pickfile" name="file" type="file" accept=".json,.jsonl">
         <a id="tempfile" href="#" style="display:none;"></a>
         <button onclick="clearfile()">x</button>
+        <select id="appendfile">
+            <option value="0">Replace Existing</option>
+            <option value="1">Merge with Existing</option>
+            <option value="2">Subtract from Existing</option>
+        </select>
         <input type="checkbox" id="dedup">
         <label for="dedup"> Deduplicate</label>
-        <input type="checkbox" id="appendfile">
-        <label for="appendfile"> Merge into Existing</label>
 
     </div>
     <div style="padding:2px">
@@ -570,7 +644,7 @@ document.addEventListener("DOMContentLoaded", function () {
         <span id="rescounter">0 Results</span>
     </div>
     <div style="padding:2px">
-        <input type="text" style="width:80px" placeholder="(Select All)" value="" id="selectamt">
+        <input type="text" style="width:84px" placeholder="(Select: All)" value="" id="selectamt">
         <button id="selectall" onclick="selall()">Select Items</button>
         <button id="deselectall" onclick="deselall()">Deselect All Items</button>
         <button id="invertsel" onclick="invertsel()">Invert Selection</button>
@@ -579,13 +653,25 @@ document.addEventListener("DOMContentLoaded", function () {
 </div>
 <div style="margin-left: auto; padding-right:8px;padding-left:8px;">
     <h2 style="margin-top: 4px; margin-bottom: 4px;">Concedo JSON Dataset Explorer</h2>
-    <h3 style="margin-top: 4px; margin-bottom: 4px; text-align: right;"><button id="ngram" onclick="displayngram()">Calc. N-Gram</button> <button id="exportsel" onclick="exportsel()">JSON Export Selected</button></h3>
+    <h3 style="margin-top: 4px; margin-bottom: 4px; text-align: right;"><button id="ngram" onclick="displayngram()">Calc. N-Gram</button> <button id="exportsel" onclick="exportsel()">JSON Export Selected</button>
+    <br> <button onclick="prunesel()">Prune To Selected</button></h3>
 
 </div>
 
 </div>
-<div style="display:flex;height:calc(100vh - 138px); font-size:20px; margin-top:4px">
-    <div id="toc" style="height:100%; overflow:auto; width:220px; padding:10px; border-right:1px solid #ccc;">No Items</div>
+<div style="display:flex;height:calc(100vh - 166px); font-size:20px; margin-top:4px">
+    <div style="height:100%; width:220px; padding:2px; border-right:1px solid #ccc;">
+        <div>
+            <select id="showdetail" style="width:100%;">
+                <option value="chars">Count Characters</option>
+                <option value="words">Count Words</option>
+                <option value="turns">Count Turns</option>
+                <!-- <option value="matches">Show Matches</option> -->
+            </select>
+        </div>
+        <div id="toc" style="height:100%; padding:8px; overflow:auto; width:100%;">No Items</div>
+    </div>
+
     <div id="contents" style="height:100%; overflow:auto; width:calc(100% - 220px); padding:10px;">No File Opened</div>
 </div>
 </body>
