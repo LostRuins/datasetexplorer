@@ -115,6 +115,9 @@ function formatHtml(unsafe)
         .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
 
 }
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 function isArr(obj) {
     // checks for null and undefined
     if (obj == null) {
@@ -214,7 +217,7 @@ function displayngram()
 
     if(fulltxt=="")
     {
-        contentsDiv.innerText = "You must select at least 1 item to calculate N-Grams!";
+        contentsDiv.innerText = "Error: You must select at least 1 item to calculate N-Grams!";
         contentsDiv.scrollTop = 0;
         return;
     }
@@ -328,9 +331,10 @@ function renderPage(item, useHtml) {
 
         }
     }
-    if(document.getElementById('showdetail').value=="words")
+
+    if(document.getElementById('minwords').value != "" || document.getElementById('maxwords').value != "" || document.getElementById('showdetail').value=="words")
     {
-    wordcount = countWords(tot);
+        wordcount = countWords(tot);
     }
     return {"text":tot,"nodes":nodecount,"words":wordcount};
 }
@@ -341,6 +345,10 @@ function clearInputs()
     document.getElementById('maxlen').value = "";
     document.getElementById('minnodes').value = "";
     document.getElementById('maxnodes').value = "";
+    document.getElementById('minwords').value = "";
+    document.getElementById('maxwords').value = "";
+    document.getElementById('minmatches').value = "";
+    document.getElementById('maxmatches').value = "";
     document.getElementById('search').value = "";
     document.getElementById('casesensitive').checked = false;
     document.getElementById('useregex').checked = false;
@@ -354,23 +362,30 @@ function displayTitles() {
     const maxlen = document.getElementById('maxlen').value;
     const minnodes = document.getElementById('minnodes').value;
     const maxnodes = document.getElementById('maxnodes').value;
+    const minwords = document.getElementById('minwords').value;
+    const maxwords = document.getElementById('maxwords').value;
+    const minmatches = document.getElementById('minmatches').value;
+    const maxmatches = document.getElementById('maxmatches').value;
     let search = document.getElementById('search').value;
-    let searchuncased = "";
 
     contentsDiv.innerText = "";
 
-    if (search != "") {
-        searchuncased = search.toLowerCase();
-    }
     tocDiv.innerText = ''; // Clear previous titles
     let ascindex = 0;
     currdbidxs = [];
+
+    if (search != "") {
+        if (!document.getElementById('useregex').checked) {
+            search = escapeRegExp(search);
+        }
+    }
 
     db.forEach((item, index) => {
         const titleDiv = document.createElement('div');
 
         let rendered = renderPage(item,false);
         let len = rendered.text.length;
+        let matchescount = 0;
 
         if (minlen != "") {
             if (len < minlen) {
@@ -392,26 +407,34 @@ function displayTitles() {
                 return;
             }
         }
-        if (search != "") {
-
-            if (document.getElementById('useregex').checked) {
-                var exp = new RegExp(search, `g${document.getElementById('casesensitive').checked?"":"i"}`);
-                if(!rendered.text.match(exp))
-                {
-                    return;
-                }
-            } else {
-                if (document.getElementById('casesensitive').checked) {
-                    if (!rendered.text.includes(search)) {
-                        return;
-                    }
-                } else {
-                    if (!rendered.text.toLowerCase().includes(searchuncased)) {
-                        return;
-                    }
-                }
+        if (minwords != "") {
+            if (rendered.words < minwords) {
+                return;
             }
-
+        }
+        if (maxwords != "") {
+            if (rendered.words > maxwords) {
+                return;
+            }
+        }
+        if (search != "") {
+            var exp = new RegExp(search, `g${document.getElementById('casesensitive').checked?"":"i"}`);
+            let m = rendered.text.match(exp);
+            if(!m)
+            {
+                return;
+            }
+            matchescount = m.length;
+        }
+        if (search != "" && minmatches != "") {
+            if (matchescount < minmatches) {
+                return;
+            }
+        }
+        if (search != "" && maxmatches != "") {
+            if (matchescount > maxmatches) {
+                return;
+            }
         }
         let shownvalue = "";
         switch(document.getElementById('showdetail').value)
@@ -426,11 +449,12 @@ function displayTitles() {
             shownvalue = rendered.nodes;
             break;
             case "matches":
-            shownvalue = len;
+            shownvalue = matchescount;
             break;
         }
         titleDiv.innerHTML = `<input class="cb" type="checkbox" id="itm${index}" onclick="selitm(${index});countsel();" ${selecteddb[index]?"checked":""}> ${index} - ${shownvalue}`;
         titleDiv.style.cursor = 'pointer';
+        titleDiv.setAttribute('data-value',shownvalue);
         titleDiv.addEventListener('click', function () {
             lastselectedidx = index;
             contentsDiv.innerHTML = renderPage(db[index],true).text;
@@ -445,6 +469,24 @@ function displayTitles() {
         currdbidxs.push(index);
         ascindex += 1;
     });
+
+    let sorter = document.getElementById('sortorder').value;
+    if(sorter=="1" || sorter=="2")
+    {
+        let asc = (sorter=="2");
+        const childDivs = Array.from(tocDiv.children);
+        if(asc)
+        {
+            childDivs.sort((a, b) => {
+                return parseInt(a.getAttribute('data-value')) - parseInt(b.getAttribute('data-value'));
+            });
+        } else {
+            childDivs.sort((b, a) => {
+                return parseInt(a.getAttribute('data-value')) - parseInt(b.getAttribute('data-value'));
+            });
+        }
+        childDivs.forEach(child => tocDiv.appendChild(child));
+    }
 
     document.getElementById('rescounter').innerText = `${ascindex} Results`;
 
@@ -464,6 +506,13 @@ function prunesel()
         {
             tempfileobj.push(db[ci]);
         }
+    }
+
+    if(tempfileobj.length==0)
+    {
+        contentsDiv.innerText = "Error: You must select at least 1 item to keep!";
+        contentsDiv.scrollTop = 0;
+        return;
     }
 
     db = tempfileobj;
@@ -615,9 +664,8 @@ document.addEventListener("DOMContentLoaded", function () {
 <div style="display:flex;">
 <div style="padding:6px">
     <div style="padding:2px">
-        <input id="pickfile" name="file" type="file" accept=".json,.jsonl">
+        <input onclick="clearfile()" id="pickfile" name="file" type="file" accept=".json,.jsonl">
         <a id="tempfile" href="#" style="display:none;"></a>
-        <button onclick="clearfile()">x</button>
         <select id="appendfile">
             <option value="0">Replace Existing</option>
             <option value="1">Merge with Existing</option>
@@ -627,11 +675,15 @@ document.addEventListener("DOMContentLoaded", function () {
         <label for="dedup"> Deduplicate</label>
 
     </div>
-    <div style="padding:2px">
-        <input type="text" style="width:80px" placeholder="(Min Len)" value="" id="minlen">
-        <input type="text" style="width:80px" placeholder="(Max Len)" value="" id="maxlen">
-        <input type="text" style="width:90px" placeholder="(Min Turns)" value="" id="minnodes">
-        <input type="text" style="width:90px" placeholder="(Max Turns)" value="" id="maxnodes">
+    <div style="padding:1px">
+        Chars: <input type="text" style="width:50px" placeholder="(Min)" value="" id="minlen">
+        <input type="text" style="width:50px" placeholder="(Max)" value="" id="maxlen">
+        Turns: <input type="text" style="width:50px" placeholder="(Min)" value="" id="minnodes">
+        <input type="text" style="width:50px" placeholder="(Max)" value="" id="maxnodes">
+        Words: <input type="text" style="width:50px" placeholder="(Min)" value="" id="minwords">
+        <input type="text" style="width:50px" placeholder="(Max)" value="" id="maxwords">
+        Matches: <input type="text" style="width:50px" placeholder="(Min)" value="" id="minmatches">
+        <input type="text" style="width:50px" placeholder="(Max)" value="" id="maxmatches">
         <button onclick="clearInputs()">Clear Filters</button>
     </div>
     <div style="padding:2px">
@@ -652,24 +704,29 @@ document.addEventListener("DOMContentLoaded", function () {
     </div>
 </div>
 <div style="margin-left: auto; padding-right:8px;padding-left:8px;">
-    <h2 style="margin-top: 4px; margin-bottom: 4px;">Concedo JSON Dataset Explorer</h2>
+    <h3 style="margin-top: 4px; margin-bottom: 4px;">Concedo JSON Dataset Explorer</h3>
     <h3 style="margin-top: 4px; margin-bottom: 4px; text-align: right;"><button id="ngram" onclick="displayngram()">Calc. N-Gram</button> <button id="exportsel" onclick="exportsel()">JSON Export Selected</button>
     <br> <button onclick="prunesel()">Prune To Selected</button></h3>
 
 </div>
 
 </div>
-<div style="display:flex;height:calc(100vh - 166px); font-size:20px; margin-top:4px">
+<div style="display:flex;height:calc(100vh - 146px); font-size:20px; margin-top:4px">
     <div style="height:100%; width:220px; padding:2px; border-right:1px solid #ccc;">
         <div>
             <select id="showdetail" style="width:100%;">
                 <option value="chars">Count Characters</option>
                 <option value="words">Count Words</option>
                 <option value="turns">Count Turns</option>
-                <!-- <option value="matches">Show Matches</option> -->
+                <option value="matches">Count Matches</option>
+            </select>
+            <select id="sortorder" style="width:100%;">
+                <option value="0">No Sort</option>
+                <option value="1">Sort Descending</option>
+                <option value="2">Sort Ascending</option>
             </select>
         </div>
-        <div id="toc" style="height:100%; padding:8px; overflow:auto; width:100%;">No Items</div>
+        <div id="toc" style="height:calc(100% - 50px); padding:8px; overflow:auto; width:100%;">No Items</div>
     </div>
 
     <div id="contents" style="height:100%; overflow:auto; width:calc(100% - 220px); padding:10px;">No File Opened</div>
