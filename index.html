@@ -644,7 +644,27 @@ function loadfile()
         const CHUNK_SIZE = 32 * 1024 * 1024; // 32 MB chunks
         const decoder = new TextDecoder('utf-8');
         const reader = file.stream().getReader();
-        const elemlimit = (document.getElementById('elemlimit').value);
+        const elemrange = (document.getElementById('elemrange').value);
+        let elemstart = 0;
+        let elemend = 999999999;
+        let elemcounter = 0;
+        if(elemrange!="")
+        {
+            if(elemrange.includes("-"))
+            {
+                let svs = elemrange.split("-");
+                if(svs.length==2 && svs[0]!="" && svs[1]!="")
+                {
+                    elemstart = Math.min(svs[0],elemend);
+                    elemend = Math.min(svs[1],elemend);
+                }
+            }
+            else
+            {
+                elemstart = 0;
+                elemend = Math.min(elemend,elemrange);
+            }
+        }
 
         let buffer = '';
         let accusize = 0;
@@ -713,7 +733,11 @@ function loadfile()
                     inObject = false;
                     try{
                         const jsonObject = JSON.parse(jsonstr);
-                        newdb.push(jsonObject);
+                        if(elemcounter>=elemstart && elemcounter<elemend)
+                        {
+                            newdb.push(jsonObject);
+                        }
+                        ++elemcounter;
                     }catch(ex)
                     {
                         errs = ex;
@@ -725,9 +749,9 @@ function loadfile()
             {
                 inObject = false;
                 buffer = buffer.slice(objend+1); // Remove the processed object from the buffer
-                if(elemlimit!="" && elemlimit>0 && newdb.length>=elemlimit)
+                if(newdb.length>=(elemend-elemstart))
                 {
-                    errs = `Loading stopped at ${newdb.length} items. Specified limit of ${elemlimit} exceeded.`
+                    errs = `Loading stopped at ${newdb.length} items. Specified range exceeded.`
                     lastloop = true;
                 }
             }
@@ -781,6 +805,28 @@ function loadfile()
 
         if(loadok)
         {
+            const elemrange = (document.getElementById('elemrange').value);
+            let elemstart = 0;
+            let elemend = 999999999;
+            let elemcounter = 0;
+            if(elemrange!="")
+            {
+                if(elemrange.includes("-"))
+                {
+                    let svs = elemrange.split("-");
+                    if(svs.length==2 && svs[0]!="" && svs[1]!="")
+                    {
+                        elemstart = Math.min(svs[0],elemend);
+                        elemend = Math.min(svs[1],elemend);
+                    }
+                }
+                else
+                {
+                    elemstart = 0;
+                    elemend = Math.min(elemend,elemrange);
+                }
+            }
+            newdb = newdb.slice(elemstart, elemend);
             postLoad();
         }
         else
@@ -856,8 +902,8 @@ document.addEventListener("DOMContentLoaded", function () {
             <option value="0">Allow Duplicates</option>
             <option value="1">Remove Duplicates</option>
         </select>
-        MemLimit:
-        <input type="text" style="width:50px" placeholder="(Max)" value="" id="elemlimit">
+        LoadRange:
+        <input type="text" style="width:84px" placeholder="(Range: All)" value="" id="elemrange">
     </div>
     <div style="padding:1px">
         Chars: <input type="text" style="width:50px" placeholder="(Min)" value="" id="minlen">
