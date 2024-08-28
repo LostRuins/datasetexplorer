@@ -302,11 +302,19 @@ function renderPage(item, useHtml) {
                             }
                         }
                     }
+                    else if(arritem.constructor == String)
+                    {
+                        if (useHtml) {
+                            v2 += `<br>${formatHtml(arritem)}`;
+                        } else {
+                            v2 += `\n${arritem}`;
+                        }
+                    }
                 }
                 valmod = true;
                 val = v2;
             }
-            else if (val.constructor == Object) {
+            else if (val && val.constructor == Object) {
                 let v2 = "";
                 for (let key3 in val) {
                     if (val.hasOwnProperty(key3)) {
@@ -608,24 +616,160 @@ function loadfile()
         contentsDiv.innerText = "Dataset File Loaded\nSelect an item to browse contents.";
     }
 
-    if (lastfile && lastfile.type === "application/json") {
-        const reader = new FileReader();
-        reader.onload = function (e) {
+    async function streamJsonFile(file) {
+        const CHUNK_SIZE = 32 * 1024 * 1024; // 32 MB chunks
+        const decoder = new TextDecoder('utf-8');
+        const reader = file.stream().getReader();
+
+        let buffer = '';
+        let accusize = 0;
+        let accu = [];
+        newdb = [];
+        let lastloop = false;
+
+        while (true) {
+            const { done, value } = await reader.read();
+
+            // Decode the chunk to a string
+            const chunk = decoder.decode(value, { stream: true });
+            accu.push(chunk);
+            if (done) {
+                lastloop = true;
+            }
+            accusize += chunk.length;
+
+            if(accusize<CHUNK_SIZE && !lastloop)
+            {
+                continue;
+            }
+
+            buffer += accu.join("");
+            accu = [];
+            accusize = 0;
+
+            // Process each character in the buffer
+            let objstart = 0;
+            let objend = 0;
+            let bl = buffer.length;
+            let inObject = false;
+            let inString = false;
+            let escapeNextChar = false;
+            let curlyBraceCount = 0;
+            for (let i = 0; i < bl; i++) {
+                const char = buffer[i];
+
+                if (char === '\\' && inString) {
+                    escapeNextChar = !escapeNextChar;
+                    continue;
+                }
+                if (char === '"' && !escapeNextChar) {
+                    inString = !inString;
+                }
+                escapeNextChar = false;
+                if (inString) {
+                    continue;
+                }
+
+                if (char === '{') {
+                    if (!inObject) {
+                        inObject = true;
+                        objstart = i;
+                    }
+                    curlyBraceCount++;
+                } else if (char === '}') {
+                    curlyBraceCount--;
+                }
+
+                // When curlyBraceCount returns to 0, we have a complete object
+                if (inObject && curlyBraceCount === 0) {
+                    let jsonstr = buffer.slice(objstart, i + 1);
+                    objend = i;
+                    inObject = false;
+                    try{
+                        const jsonObject = JSON.parse(jsonstr);
+                        newdb.push(jsonObject);
+                    }catch(ex)
+                    {
+                        console.log(ex);
+                    }
+                }
+            }
+            if(objstart>0 && objend>0)
+            {
+                inObject = false;
+                buffer = buffer.slice(objend+1); // Remove the processed object from the buffer
+            }
+            if(lastloop)
+            {
+                break;
+            }
+        }
+
+        if(newdb.length>0)
+        {
+            postLoad();
+        }else{
+            contentsDiv.innerText = `Error: Could not load dataset file: ${lastfile.name}`;
+        }
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        let loadok = false;
+        let attempt_superbig_load = false;
+        try
+        {
+            //try normal json
             newdb = JSON.parse(e.target.result);
+            loadok = true;
+        }
+        catch(err)
+        {
+            console.log(err);
+            //try jsonl
+            try
+            {
+                const content = e.target.result;
+                if(content)
+                {
+                    const lines = content.split('\n');
+                    newdb = lines.filter(line => line.trim()).map(line => JSON.parse(line));
+                    loadok = true;
+                }
+            }
+            catch(err2)
+            {
+                console.log(err2);
+            }
+        }
+
+        var filesizemb = lastfile.size/(1024*1024);
+
+        if(loadok)
+        {
             postLoad();
-        };
-        reader.readAsText(lastfile);
-    }
-    else if (lastfile && lastfile.name.toLowerCase().endsWith(".jsonl")) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const content = e.target.result;
-            const lines = content.split('\n');
-            newdb = lines.filter(line => line.trim()).map(line => JSON.parse(line));
-            postLoad();
-        };
-        reader.readAsText(lastfile);
-    }
+        }
+        else
+        {
+            if(filesizemb > 300 && (lastfile.type === "application/json" || lastfile.name.endsWith(".jsonl")))
+            {
+                attempt_superbig_load = true;
+                //try big json
+                streamJsonFile(lastfile);
+            }
+
+            if(attempt_superbig_load)
+            {
+                contentsDiv.innerText = `Attempting Fallback Stream-Load of Massive File:\n${lastfile.name} (${filesizemb.toFixed(0)} mb)\nPlease wait...`;
+            }else{
+                contentsDiv.innerText = `Error: Could not load dataset file: ${lastfile.name}`;
+            }
+
+            contentsDiv.scrollTop = 0;
+        }
+    };
+    reader.readAsText(lastfile);
+
 }
 function clearfile()
 {
