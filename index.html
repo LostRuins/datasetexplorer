@@ -626,6 +626,7 @@ function loadfile()
         let accu = [];
         newdb = [];
         let lastloop = false;
+        let errs = null;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -690,6 +691,7 @@ function loadfile()
                         newdb.push(jsonObject);
                     }catch(ex)
                     {
+                        errs = ex;
                         console.log(ex);
                     }
                 }
@@ -708,9 +710,14 @@ function loadfile()
         if(newdb.length>0)
         {
             postLoad();
+            if(errs)
+            {
+                contentsDiv.innerText = `Dataset partially loaded.\nErrors occurred while loading dataset file: ${lastfile.name}\n${errs}`;
+            }
         }else{
             contentsDiv.innerText = `Error: Could not load dataset file: ${lastfile.name}`;
         }
+
     }
 
     const reader = new FileReader();
@@ -751,7 +758,7 @@ function loadfile()
         }
         else
         {
-            if(filesizemb > 300 && (lastfile.type === "application/json" || lastfile.name.endsWith(".jsonl")))
+            if(filesizemb > 0.01 && (lastfile.type === "application/json" || lastfile.name.endsWith(".jsonl")))
             {
                 attempt_superbig_load = true;
                 //try big json
