@@ -601,8 +601,9 @@ function loadfile()
     const merge_existing = (document.getElementById('appendfile').value=="1");
     const subtract_existing = (document.getElementById('appendfile').value=="2");
     const contentsDiv = document.getElementById('contents');
-    const dedup = (document.getElementById('dedup').checked);
+    const dedup = (document.getElementById('dedup').value=="1");
     let newdb = [];
+    var filesizemb = lastfile.size/(1024*1024);
 
     function postLoad()
     {
@@ -643,6 +644,7 @@ function loadfile()
         const CHUNK_SIZE = 32 * 1024 * 1024; // 32 MB chunks
         const decoder = new TextDecoder('utf-8');
         const reader = file.stream().getReader();
+        const elemlimit = (document.getElementById('elemlimit').value);
 
         let buffer = '';
         let accusize = 0;
@@ -723,6 +725,11 @@ function loadfile()
             {
                 inObject = false;
                 buffer = buffer.slice(objend+1); // Remove the processed object from the buffer
+                if(elemlimit!="" && elemlimit>0 && newdb.length>=elemlimit)
+                {
+                    errs = `Loading stopped at ${newdb.length} items. Specified limit of ${elemlimit} exceeded.`
+                    lastloop = true;
+                }
             }
             if(lastloop)
             {
@@ -735,7 +742,7 @@ function loadfile()
             postLoad();
             if(errs)
             {
-                contentsDiv.innerText = `Dataset partially loaded.\nErrors occurred while loading dataset file: ${lastfile.name}\n${errs}`;
+                contentsDiv.innerText = `Dataset partially loaded.\nInterruption occurred while loading dataset file: ${lastfile.name}\n${errs}`;
             }
         }else{
             contentsDiv.innerText = `Error: Could not load dataset file: ${lastfile.name}`;
@@ -746,7 +753,6 @@ function loadfile()
     const reader = new FileReader();
     reader.onload = function (e) {
         let loadok = false;
-        let attempt_superbig_load = false;
         try
         {
             //try normal json
@@ -773,8 +779,6 @@ function loadfile()
             }
         }
 
-        var filesizemb = lastfile.size/(1024*1024);
-
         if(loadok)
         {
             postLoad();
@@ -783,14 +787,9 @@ function loadfile()
         {
             if(filesizemb > 0.01 && (lastfile.type === "application/json" || lastfile.name.endsWith(".jsonl")))
             {
-                attempt_superbig_load = true;
                 //try big json
                 streamJsonFile(lastfile);
-            }
-
-            if(attempt_superbig_load)
-            {
-                contentsDiv.innerText = `Attempting Fallback Stream-Load of Massive File:\n${lastfile.name} (${filesizemb.toFixed(0)} mb)\nPlease wait...`;
+                contentsDiv.innerText = `Attempting Fallback Stream-Load of Massive File:\n${lastfile.name} (${filesizemb.toFixed(0)} mb).\nPlease wait, this may take a long time...`;
             }else{
                 contentsDiv.innerText = `Error: Could not load dataset file: ${lastfile.name}`;
             }
@@ -798,7 +797,15 @@ function loadfile()
             contentsDiv.scrollTop = 0;
         }
     };
-    reader.readAsText(lastfile);
+
+    if (filesizemb > 999) //files larger than 1gb just use streamload
+    {
+        //try big json
+        streamJsonFile(lastfile);
+        contentsDiv.innerText = `Attempting Stream-Load of Massive File:\n${lastfile.name} (${filesizemb.toFixed(0)} mb)\nPlease wait, this may take a long time...`;
+    } else {
+        reader.readAsText(lastfile);
+    }
 
 }
 function clearfile()
@@ -838,16 +845,19 @@ document.addEventListener("DOMContentLoaded", function () {
 <div style="display:flex;">
 <div style="padding:6px">
     <div style="padding:2px">
-        <input onclick="clearfile()" id="pickfile" name="file" type="file" accept=".json,.jsonl">
+        <input onclick="clearfile()" style="width: 220px;" id="pickfile" name="file" type="file" accept=".json,.jsonl">
         <a id="tempfile" href="#" style="display:none;"></a>
         <select id="appendfile">
             <option value="0">Replace Existing</option>
             <option value="1">Merge with Existing</option>
             <option value="2">Subtract from Existing</option>
         </select>
-        <input type="checkbox" id="dedup">
-        <label for="dedup"> Deduplicate</label>
-
+        <select id="dedup">
+            <option value="0">Allow Duplicates</option>
+            <option value="1">Remove Duplicates</option>
+        </select>
+        MemLimit:
+        <input type="text" style="width:50px" placeholder="(Max)" value="" id="elemlimit">
     </div>
     <div style="padding:1px">
         Chars: <input type="text" style="width:50px" placeholder="(Min)" value="" id="minlen">
