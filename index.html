@@ -125,7 +125,30 @@ function isArr(obj) {
     }
     return (obj.constructor === Array)
 }
-
+function nextitm()
+{
+    if(lastleftitem!=null)
+    {
+        let sib = lastleftitem.nextSibling;
+        if(sib)
+        {
+            clickItem(sib);
+        }
+    }
+}
+function clickItem(titleDiv)
+{
+    let index = titleDiv.getAttribute('data-index');
+    const contentsDiv = document.getElementById('contents');
+    lastselectedidx = index;
+    contentsDiv.innerHTML = renderPage(db[index],true).text;
+    contentsDiv.scrollTop = 0;
+    if (lastleftitem) {
+        lastleftitem.style.backgroundColor = null;
+    }
+    lastleftitem = titleDiv;
+    titleDiv.style.backgroundColor = '#d3d3d3';
+}
 function countsel()
 {
     let count = 0;
@@ -463,15 +486,9 @@ function displayTitles() {
         titleDiv.innerHTML = `<input class="cb" type="checkbox" id="itm${index}" onclick="selitm(${index});countsel();" ${selecteddb[index]?"checked":""}> ${index} - ${shownvalue}`;
         titleDiv.style.cursor = 'pointer';
         titleDiv.setAttribute('data-value',shownvalue);
+        titleDiv.setAttribute('data-index',index);
         titleDiv.addEventListener('click', function () {
-            lastselectedidx = index;
-            contentsDiv.innerHTML = renderPage(db[index],true).text;
-            contentsDiv.scrollTop = 0;
-            if (lastleftitem) {
-                lastleftitem.style.backgroundColor = null;
-            }
-            lastleftitem = titleDiv;
-            titleDiv.style.backgroundColor = '#d3d3d3';
+            clickItem(titleDiv);
         });
         tocDiv.appendChild(titleDiv);
         currdbidxs.push(index);
@@ -871,11 +888,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 <option value="turns">Count Turns</option>
                 <option value="matches">Count Matches</option>
             </select>
-            <select id="sortorder" style="width:100%;">
+            <select id="sortorder" style="width:calc (100% - 30px);">
                 <option value="0">No Sort</option>
                 <option value="1">Sort Descending</option>
                 <option value="2">Sort Ascending</option>
             </select>
+            <button id="nextitm" onclick="nextitm()">&gt;</button>
         </div>
         <div id="toc" style="height:calc(100% - 50px); padding:8px; overflow:auto; width:100%;">No Items</div>
     </div>
