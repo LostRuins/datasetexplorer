@@ -512,7 +512,11 @@ function displayTitles() {
                 return parseInt(a.getAttribute('data-value')) - parseInt(b.getAttribute('data-value'));
             });
         }
-        childDivs.forEach(child => tocDiv.appendChild(child));
+        currdbidxs = [];
+        childDivs.forEach(child => {
+            tocDiv.appendChild(child);
+            currdbidxs.push(child.getAttribute('data-index'));
+        });
     }
 
     document.getElementById('rescounter').innerText = `${ascindex} Results`;
