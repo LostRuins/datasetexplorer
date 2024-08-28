@@ -163,33 +163,35 @@ function selitm(idx)
         selecteddb[idx] = box.checked;
     }
 }
-function selall()
+function selrange(isSel)
 {
-    let selamt = currdbidxs.length;
+    let selstart = 0;
+    let selend = currdbidxs.length;
     if(document.getElementById("selectamt").value!="")
     {
-        selamt = Math.min(selamt,document.getElementById("selectamt").value);
-    }
-
-    for(let i=0;i<selamt;++i)
-    {
-        let box = document.getElementById(`itm${currdbidxs[i]}`);
-        if(box)
+        let sv = document.getElementById("selectamt").value;
+        if(sv.includes("-"))
         {
-            box.checked = true;
-            selitm(currdbidxs[i]);
+            let svs = sv.split("-");
+            if(svs.length==2 && svs[0]!="" && svs[1]!="")
+            {
+                selstart = Math.min(svs[0],selend);
+                selend = Math.min(svs[1],selend);
+            }
+        }
+        else
+        {
+            selstart = 0;
+            selend = Math.min(selend,sv);
         }
     }
-    countsel();
-}
-function deselall()
-{
-    for(let i=0;i<currdbidxs.length;++i)
+
+    for(let i=selstart;i<selend;++i)
     {
         let box = document.getElementById(`itm${currdbidxs[i]}`);
         if(box)
         {
-            box.checked = false;
+            box.checked = isSel;
             selitm(currdbidxs[i]);
         }
     }
@@ -852,7 +854,6 @@ document.addEventListener("DOMContentLoaded", function () {
         <input type="text" style="width:50px" placeholder="(Max)" value="" id="maxwords">
         Matches: <input type="text" style="width:50px" placeholder="(Min)" value="" id="minmatches">
         <input type="text" style="width:50px" placeholder="(Max)" value="" id="maxmatches">
-        <button onclick="clearInputs()">Clear Filters</button>
     </div>
     <div style="padding:2px">
         <input type="text" style="width:160px" placeholder="(Search)" value="" id="search">
@@ -860,15 +861,13 @@ document.addEventListener("DOMContentLoaded", function () {
         <label for="useregex"> Uses Regex</label>
         <input type="checkbox" id="casesensitive">
         <label for="casesensitive"> Case Sensitive</label>
-        <button id="filter" onclick="displayTitles()">Filter</button>
-        <span id="rescounter">0 Results</span>
     </div>
     <div style="padding:2px">
-        <input type="text" style="width:84px" placeholder="(Select: All)" value="" id="selectamt">
-        <button id="selectall" onclick="selall()">Select Items</button>
-        <button id="deselectall" onclick="deselall()">Deselect All Items</button>
+        <input type="text" style="width:84px" placeholder="(Range: All)" value="" id="selectamt">
+        <button id="selectall" onclick="selrange(true)">Select Range</button>
+        <button id="deselectall" onclick="selrange(false)">Deselect Range</button>
         <button id="invertsel" onclick="invertsel()">Invert Selection</button>
-        <span id="selcounter">0 Selected</span>
+        <span> [ <span id="selcounter">0 Selected</span> / <span id="rescounter">0 Results</span> ] </span>
     </div>
 </div>
 <div style="margin-left: auto; padding-right:8px;padding-left:8px;">
@@ -881,21 +880,25 @@ document.addEventListener("DOMContentLoaded", function () {
 </div>
 <div style="display:flex;height:calc(100vh - 146px); font-size:20px; margin-top:4px">
     <div style="height:100%; width:220px; padding:2px; border-right:1px solid #ccc;">
-        <div>
+        <div style="font-size: 15px;">
             <select id="showdetail" style="width:100%;">
                 <option value="chars">Count Characters</option>
                 <option value="words">Count Words</option>
                 <option value="turns">Count Turns</option>
                 <option value="matches">Count Matches</option>
             </select>
-            <select id="sortorder" style="width:calc (100% - 30px);">
+            <select id="sortorder" style="width: 100%;">
                 <option value="0">No Sort</option>
                 <option value="1">Sort Descending</option>
                 <option value="2">Sort Ascending</option>
             </select>
-            <button id="nextitm" onclick="nextitm()">&gt;</button>
         </div>
-        <div id="toc" style="height:calc(100% - 50px); padding:8px; overflow:auto; width:100%;">No Items</div>
+        <div style="font-size: 15px;">
+            <button style="width: 48%;" id="filter" onclick="displayTitles()">Filter</button>
+            <button style="width: 48%;" onclick="clearInputs()">Clear Filters</button>
+        </div>
+        <div id="toc" style="height:calc(100% - 96px); padding:8px; overflow:auto; width:100%;">No Items</div>
+        <button id="nextitm" style="width: 100%; padding:2px" onclick="nextitm()">Next Item</button>
     </div>
 
     <div id="contents" style="height:100%; overflow:auto; width:calc(100% - 220px); padding:10px;">No File Opened</div>
