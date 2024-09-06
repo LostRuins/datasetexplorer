@@ -1,7 +1,7 @@
 # Concedo's Dataset Explorer
 Easily view and modify JSON and JSONL datasets for training large language models
 
-![image](https://github.com/user-attachments/assets/23c58d45-5a00-4159-9d37-c5a21996f2b0)
+![image](https://github.com/user-attachments/assets/db662879-dc61-4dbd-916e-fa5a9f325db8)
 
 ## Features
 - Easily **view and modify JSON and JSONL datasets** for training large language models
@@ -9,7 +9,7 @@ Easily view and modify JSON and JSONL datasets for training large language model
 - Runs **fully portable** from your web browser, as a **single file with zero other dependencies**
 - Browse through your training datasets, with easy search and filter functions to segment your data
 - Supports **searching and filtering** with regex search or simple substrings search
-- Filter multiple samples by **contents, length, and number of turns**. Allows combining multiple queries for composite results.
+- Filter multiple samples by **contents, length, matches, and number of turns**. Allows combining multiple queries for composite results.
 - Includes an **N-gram viewer** to inspect selected examples for word frequency and repetition (word cloud)
 - Allows **splitting and merging datasets** by selecting desired subsets with different criteria.
 - Allows easy **dataset deduplication**
