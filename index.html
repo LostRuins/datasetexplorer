@@ -107,8 +107,9 @@ img {
             display: block;
             color: white;
             text-align: center;
-            padding: 14px 20px;
+            padding: 12px 14px;
             text-decoration: none;
+            font-size: 14px;
         }
 
         /* Change color on hover */
@@ -603,6 +604,48 @@ function prunesel()
     displayTitles();
 }
 
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        // Generate a random index
+        const j = Math.floor(Math.random() * (i + 1));
+        // Swap elements i and j
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function shufflesel()
+{
+    const contentsDiv = document.getElementById('contents');
+    tempfileobj = [];
+    for(let i=0;i<currdbidxs.length;++i)
+    {
+        let ci = currdbidxs[i];
+        let box = document.getElementById(`itm${ci}`);
+        if(box && box.checked)
+        {
+            tempfileobj.push(db[ci]);
+        }
+    }
+
+    if(tempfileobj.length==0)
+    {
+        contentsDiv.innerText = "Error: You must select at least 1 item to erase!";
+        contentsDiv.scrollTop = 0;
+        return;
+    }
+
+    db = db.filter( ( el ) => !tempfileobj.includes( el ) );
+    shuffle(tempfileobj);
+    for(let i=0;i<tempfileobj.length;++i)
+    {
+        db.push(tempfileobj[i]);
+    }
+    selecteddb = {};
+    countsel();
+    displayTitles();
+}
+
 function exportsel()
 {
     const contentsDiv = document.getElementById('contents');
@@ -1018,8 +1061,9 @@ document.addEventListener("DOMContentLoaded", function () {
         <button id="deselectall" onclick="selrange(false)">Deselect Range</button>
         <button id="invertsel" onclick="invertsel()">Invert Selection</button>
         </div><div style="padding: 2px; margin-top: 6px;">
-        <button onclick="erasesel()">Erase Selected</button></h3>
-        <button onclick="prunesel()">Prune To Selected</button></h3>
+        <button onclick="erasesel()">Erase Selected</button>
+        <button onclick="prunesel()">Prune To Selected</button>
+        <button onclick="shufflesel()">Shuffle Selected</button>
         <button id="ngram" onclick="displayngram()">Calc. N-Gram</button>
         </div>
     </div>
