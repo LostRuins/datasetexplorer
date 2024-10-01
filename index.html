@@ -144,6 +144,15 @@ function formatHtml(unsafe)
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+function escapeJSONString(str) {
+  return str
+    .replace(/\\/g, '\\\\')   // Escape backslash
+    .replace(/"/g, '\\"')      // Escape double quote
+    .replace(/\n/g, '\\n')     // Escape new line
+    .replace(/\r/g, '\\r')     // Escape carriage return
+    .replace(/\t/g, '\\t')     // Escape tab
+    .replace(/\f/g, '\\f');    // Escape form feed
+}
 function isArr(obj) {
     // checks for null and undefined
     if (obj == null) {
@@ -546,6 +555,65 @@ function displayTitles() {
     }
 
     document.getElementById('rescounter').innerText = `${ascindex} Results`;
+
+}
+
+function replaceinsel()
+{
+    let search = document.getElementById('match_input').value;
+    let searchreplace = document.getElementById('match_replace').value;
+    const contentsDiv = document.getElementById('contents');
+
+    let selids = [];
+    for(let i=0;i<currdbidxs.length;++i)
+    {
+        let ci = currdbidxs[i];
+        let box = document.getElementById(`itm${ci}`);
+        if(box && box.checked)
+        {
+            selids.push(ci);
+        }
+    }
+
+    if(selids.length==0)
+    {
+        contentsDiv.innerText = "Error: You must select at least 1 item to transform!";
+        contentsDiv.scrollTop = 0;
+        return;
+    }
+
+    if (search == "") {
+        contentsDiv.innerText = "Error: You did not enter a Find and Replace string!";
+        contentsDiv.scrollTop = 0;
+        return;
+    }
+
+    search = escapeJSONString(search);
+    searchreplace = escapeJSONString(searchreplace);
+
+    let matchcount = 0;
+
+    for(let i=0;i<selids.length;++i)
+    {
+        let itm = db[selids[i]];
+        try {
+            let itmstr = JSON.stringify(itm,null,2);
+            let m = itmstr.includes(search);
+            if(!m)
+            {
+                continue;
+            }
+            itmstr = itmstr.replaceAll(search, searchreplace);
+            var newitem = JSON.parse(itmstr);
+            ++matchcount;
+            db[selids[i]] = newitem;
+        } catch (e) {
+            console.log("Error replacing string: " + e);
+        }
+    }
+
+    contentsDiv.innerText = `Replaced ${matchcount} matching elements`;
+    contentsDiv.scrollTop = 0;
 
 }
 
@@ -975,7 +1043,8 @@ function togglepanel(id)
     const p2 = document.getElementById('panel2');
     const p3 = document.getElementById('panel3');
     const p4 = document.getElementById('panel4');
-    p1.style.display =  p2.style.display = p3.style.display = p4.style.display = "none";
+    const p5 = document.getElementById('panel5');
+    p1.style.display =  p2.style.display = p3.style.display = p4.style.display = p5.style.display = "none";
     document.getElementById(`panel${id}`).style.display = "block";
 }
 
@@ -996,7 +1065,8 @@ document.addEventListener("DOMContentLoaded", function () {
     <a href="#" onclick="togglepanel(1)">Importing</a>
     <a href="#" onclick="togglepanel(2)">Filtering</a>
     <a href="#" onclick="togglepanel(3)">Selecting</a>
-    <a href="#" onclick="togglepanel(4)">Exporting</a>
+    <a href="#" onclick="togglepanel(4)">Transforming</a>
+    <a href="#" onclick="togglepanel(5)">Exporting</a>
     <a style="float: right;" target="_blank" href="https://github.com/LostRuins/DatasetExplorer">Concedo JSON Dataset Explorer</a>
 </div>
 
@@ -1068,8 +1138,15 @@ document.addEventListener("DOMContentLoaded", function () {
         </div>
     </div>
     <div id="panel4" style="padding:2px; display: none;">
-       <button id="exportsel" onclick="exportsel()">JSON Export Selected</button>
+        <div style="padding:2px">
+            <input type="text" style="width:120px" placeholder="(Match)" value="" id="match_input">
+            <input type="text" style="width:120px" placeholder="(Replace)" value="" id="match_replace">
+            <button id="match_go" onclick="replaceinsel()">Find & Replace in Selected</button>
+        </div>
     </div>
+    <div id="panel5" style="padding:2px; display: none;">
+        <button id="exportsel" onclick="exportsel()">JSON Export Selected</button>
+     </div>
 </div>
 
 
