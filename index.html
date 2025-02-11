@@ -341,6 +341,14 @@ function renderPage(item, useHtml) {
     {
         tot += `<button class="unselectable" onclick="return editElem()" style="float:right;">Edit Item</button>`;
     }
+    if(typeof item === 'string' && !(item instanceof String))
+    {
+        if (useHtml) {
+            tot += `${formatHtml(item)}`;
+        } else {
+            tot += `${item}`;
+        }
+    }else{
     for (let key in item) {
         if (item.hasOwnProperty(key)) {
             let val = item[key];
@@ -398,6 +406,7 @@ function renderPage(item, useHtml) {
             }
 
         }
+    }
     }
 
     if(document.getElementById('minwords').value != "" || document.getElementById('maxwords').value != "" || document.getElementById('showdetail').value=="words")
