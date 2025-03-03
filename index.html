@@ -8,6 +8,7 @@ This software is under the AGPL v3.0 License unless otherwise exempted. Please d
 -->
 
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 html {
     font-family: sans-serif;
@@ -34,6 +35,11 @@ html {
 {
     width:18px;
     height:18px;
+}
+
+.contents_open
+{
+    width:calc(100% - 220px);
 }
 
 body {
@@ -1120,6 +1126,18 @@ function togglepanel(id)
     document.getElementById(`panel${id}`).style.display = "block";
 }
 
+function togglesidepane()
+{
+    if(document.getElementById('contents').classList.contains('contents_open'))
+    {
+        document.getElementById('contents').classList.remove('contents_open');
+        document.getElementById('sidepane').style.display = "none";
+    }else{
+        document.getElementById('contents').classList.add('contents_open');
+        document.getElementById('sidepane').style.display = "block";
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const fileInput = document.getElementById('pickfile');
 
@@ -1134,6 +1152,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <body>
 <div class="navbar">
+    <a href="#" onclick="togglesidepane();">[+]</a>
     <a href="#" onclick="togglepanel(1)">Importing</a>
     <a href="#" onclick="togglepanel(2)">Filtering</a>
     <a href="#" onclick="togglepanel(3)">Selecting</a>
@@ -1226,13 +1245,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 </div>
 <div style="display:flex;height:calc(100vh - 150px); font-size:20px; margin-top:2px">
-    <div style="height:100%; width:220px; padding:2px; border-right:1px solid #ccc;">
+    <div id="sidepane" style="height:100%; width:220px; padding:2px; border-right:1px solid #ccc;">
         <div><span style="font-size: 13px;"> [ <span id="selcounter">0 Selected</span> / <span id="rescounter">0 Results</span> ] </span></div>
         <div id="toc" style="height:calc(100% - 60px); padding:4px; overflow:auto; width:100%;">No Items</div>
         <button id="nextitm" style="width: 100%; padding:2px" onclick="nextitm()">Next Item</button>
     </div>
 
-    <div id="contents" style="height:100%; overflow:auto; width:calc(100% - 220px); padding:8px;">No File Opened</div>
+    <div id="contents" class="contents_open" style="height:100%; overflow:auto; padding:8px;">No File Opened</div>
 </div>
 </body>
 
