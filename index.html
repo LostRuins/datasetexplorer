@@ -623,7 +623,74 @@ function normalizesel()
     contentsDiv.scrollTop = 0;
 }
 
-function replaceinsel()
+function replacejsondatainsel()
+{
+    let search = document.getElementById('swap_fieldname').value;
+    let searchreplace = document.getElementById('swap_fielddata').value;
+    const contentsDiv = document.getElementById('contents');
+
+    let replacedobject = null;
+    if(searchreplace=="")
+    {
+        replacedobject = "";
+    }
+    if(searchreplace!="null" && searchreplace!="")
+    {
+        try {
+            if(!searchreplace.trim().startsWith("{") && !searchreplace.trim().startsWith("["))
+            {
+                searchreplace = `"${searchreplace}"`;
+            }
+            replacedobject = JSON.parse(searchreplace);
+        } catch (e) {
+            contentsDiv.innerText = "Replacement Object is Invalid. It must be valid string or JSON object!";
+            contentsDiv.scrollTop = 0;
+            return;
+        }
+    }
+    if (search == "") {
+        contentsDiv.innerText = "Error: You did not enter a valid field name";
+        contentsDiv.scrollTop = 0;
+        return;
+    }
+
+    let selids = [];
+    for(let i=0;i<currdbidxs.length;++i)
+    {
+        let ci = currdbidxs[i];
+        let box = document.getElementById(`itm${ci}`);
+        if(box && box.checked)
+        {
+            selids.push(ci);
+        }
+    }
+
+    if(selids.length==0)
+    {
+        contentsDiv.innerText = "Error: You must select at least 1 item to transform!";
+        contentsDiv.scrollTop = 0;
+        return;
+    }
+
+    let matchcount = 0;
+
+    for(let i=0;i<selids.length;++i)
+    {
+        let itm = db[selids[i]];
+        if(replacedobject===null)
+        {
+            delete itm[search];
+        }else{
+            itm[search] = replacedobject;
+        }
+    }
+
+    contentsDiv.innerText = `Processed ${selids.length} selected elements`;
+    contentsDiv.scrollTop = 0;
+
+}
+
+function replacetextinsel()
 {
     let search = document.getElementById('match_input').value;
     let searchreplace = document.getElementById('match_replace').value;
@@ -1230,9 +1297,14 @@ document.addEventListener("DOMContentLoaded", function () {
     </div>
     <div id="panel4" style="padding:2px; display: none;">
         <div style="padding:2px">
-            <input type="text" style="width:120px" placeholder="(Match)" value="" id="match_input">
+            String Replace <input type="text" style="width:120px" placeholder="(Match)" value="" id="match_input">
             <input type="text" style="width:120px" placeholder="(Replace)" value="" id="match_replace">
-            <button id="match_go" onclick="replaceinsel()">Find & Replace in Selected</button>
+            <button onclick="replacetextinsel()">Find & Replace in Selected</button>
+        </div>
+        <div style="padding:2px">
+            JSON ObjEdit <input type="text" style="width:120px" placeholder="(JsFieldName)" value="" id="swap_fieldname">
+            <input type="text" style="width:120px" placeholder="(JsNewObject)" value="" id="swap_fielddata"> (null Deletes Field)
+            <button onclick="replacejsondatainsel()">Replace JSON Data </button>
         </div>
         <button onclick="normalizesel()">Normalize Text in Selected</button>
     </div>
